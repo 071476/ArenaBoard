@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.ali.arenaboard.game_checkers.CheckersScreen
 import com.ali.arenaboard.game_tictactoe.TicTacToeScreen
 import com.ali.arenaboard.ui.theme.ArenaBoardTheme
 
@@ -32,7 +33,7 @@ fun ArenaNavigation() {
         composable("home") {
             HomeScreen(
                 onTicTacToe = { navController.navigate("tictactoe_mode") },
-                onCheckers = { }
+                onCheckers = { navController.navigate("checkers_mode") }
             )
         }
 
@@ -47,6 +48,21 @@ fun ArenaNavigation() {
 
         composable("tictactoe_game") {
             TicTacToeScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable("checkers_mode") {
+            ModeSelectionScreen(
+                gameName = "DAMAS",
+                onBack = { navController.popBackStack() },
+                onVsApp = { navController.navigate("checkers_game") },
+                onOnline = { }
+            )
+        }
+
+        composable("checkers_game") {
+            CheckersScreen(
                 onBack = { navController.popBackStack() }
             )
         }
