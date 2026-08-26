@@ -10,7 +10,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -71,13 +72,12 @@ fun OnlineLobbyScreen(
             Spacer(modifier = Modifier.height(60.dp))
 
             if (!showJoin) {
-                // Crear sala
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .shadow(12.dp, RoundedCornerShape(20.dp))
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Brush.horizontalGradient(listOf(Color(0xFF003D1A), Color(0xFF006B2E))))
+                        .background(Brush.horizontalGradient(listOf(androidx.compose.ui.graphics.Color(0xFF003D1A), androidx.compose.ui.graphics.Color(0xFF006B2E))))
                         .clickable(enabled = !isLoading) {
                             scope.launch {
                                 isLoading = true
@@ -114,13 +114,12 @@ fun OnlineLobbyScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Unirse a sala
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .shadow(12.dp, RoundedCornerShape(20.dp))
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Brush.horizontalGradient(listOf(Color(0xFF3D0033), Color(0xFF7A0066))))
+                        .background(Brush.horizontalGradient(listOf(androidx.compose.ui.graphics.Color(0xFF3D0033), androidx.compose.ui.graphics.Color(0xFF7A0066))))
                         .clickable { showJoin = true }
                         .padding(32.dp),
                     contentAlignment = Alignment.Center
@@ -143,7 +142,6 @@ fun OnlineLobbyScreen(
                     }
                 }
             } else {
-                // Input del código
                 Text(
                     text = "Escribe el código",
                     fontSize = 22.sp,
@@ -246,10 +244,4 @@ fun OnlineLobbyScreen(
             }
         }
     }
-}
-
-private fun Modifier.shadow(elevation: androidx.compose.ui.unit.Dp, shape: androidx.compose.ui.graphics.Shape): Modifier {
-    return this.then(
-        Modifier.clip(shape)
-    )
 }

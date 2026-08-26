@@ -14,13 +14,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.ali.arenaboard.Cell
-import com.ali.arenaboard.ScoreCard
 import com.ali.arenaboard.core.network.RoomRepository
 import com.ali.arenaboard.ui.theme.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 
 @Composable
 fun TicTacToeOnlineScreen(
@@ -37,7 +36,6 @@ fun TicTacToeOnlineScreen(
     var scoreOpponent by remember { mutableStateOf(0) }
     var opponentName by remember { mutableStateOf("Rival") }
 
-    // Cargar sala inicial
     LaunchedEffect(roomCode) {
         val room = RoomRepository.getRoom(roomCode)
         if (room != null) {
@@ -46,7 +44,6 @@ fun TicTacToeOnlineScreen(
         }
     }
 
-    // Polling del tablero
     LaunchedEffect(roomCode) {
         while (true) {
             delay(1500)
@@ -109,7 +106,7 @@ fun TicTacToeOnlineScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                ScoreCard(label = "TÚ ($mySymbol)", score = scoreMe, color = BlueNeon, symbol = mySymbol)
+                OnlineScoreCard(label = "TÚ ($mySymbol)", score = scoreMe, color = BlueNeon, symbol = mySymbol)
                 Text(
                     text = "VS",
                     fontSize = 20.sp,
@@ -117,7 +114,7 @@ fun TicTacToeOnlineScreen(
                     color = TextMuted,
                     modifier = Modifier.align(Alignment.CenterVertically)
                 )
-                ScoreCard(label = opponentName, score = scoreOpponent, color = PinkNeon, symbol = if (mySymbol == "X") "O" else "X")
+                OnlineScoreCard(label = opponentName, score = scoreOpponent, color = PinkNeon, symbol = if (mySymbol == "X") "O" else "X")
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -133,7 +130,7 @@ fun TicTacToeOnlineScreen(
                     Row {
                         for (col in 0..2) {
                             val index = row * 3 + col
-                            Cell(
+                            OnlineCell(
                                 value = board[index],
                                 onClick = {
                                     if (board[index].isEmpty() && currentTurn == mySymbol && winner == null) {
@@ -146,7 +143,7 @@ fun TicTacToeOnlineScreen(
                                             currentTurn = nextTurn
                                             RoomRepository.updateBoard(
                                                 code = roomCode,
-                                                board = kotlinx.serialization.json.Json.encodeToString(kotlinx.serialization.builtins.ListSerializer(kotlinx.serialization.builtins.serializer<String>()), newBoard),
+                                                board = Json.encodeToString(newBoard),
                                                 turn = nextTurn,
                                                 winner = win
                                             )
@@ -194,6 +191,40 @@ fun TicTacToeOnlineScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+fun OnlineScoreCard(label: String, score: Int, color: Color, symbol: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = symbol, fontSize = 24.sp)
+        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextMuted)
+        Text(text = "$score", fontSize = 36.sp, fontWeight = FontWeight.Black, color = color)
+    }
+}
+
+@Composable
+fun OnlineCell(value: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(100.dp)
+            .padding(4.dp)
+            .shadow(4.dp, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFF0D1130))
+            .clickable(enabled = value.isEmpty()) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = value,
+            fontSize = 40.sp,
+            fontWeight = FontWeight.Black,
+            color = when (value) {
+                "X" -> BlueNeon
+                "O" -> PinkNeon
+                else -> Color.Transparent
+            }
+        )
     }
 }
 
