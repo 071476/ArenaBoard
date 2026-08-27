@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.ali.arenaboard.game_checkers.CheckersOnlineScreen
 import com.ali.arenaboard.game_checkers.CheckersScreen
 import com.ali.arenaboard.game_tictactoe.TicTacToeOnlineScreen
 import com.ali.arenaboard.game_tictactoe.TicTacToeScreen
@@ -44,6 +45,7 @@ fun ArenaNavigation() {
             )
         }
 
+        // GATO
         composable("tictactoe_mode") {
             ModeSelectionScreen(
                 gameName = "GATO",
@@ -54,9 +56,7 @@ fun ArenaNavigation() {
         }
 
         composable("tictactoe_game") {
-            TicTacToeScreen(
-                onBack = { navController.popBackStack() }
-            )
+            TicTacToeScreen(onBack = { navController.popBackStack() })
         }
 
         composable("tictactoe_online_lobby") {
@@ -98,17 +98,55 @@ fun ArenaNavigation() {
             )
         }
 
+        // DAMAS
         composable("checkers_mode") {
             ModeSelectionScreen(
                 gameName = "DAMAS",
                 onBack = { navController.popBackStack() },
                 onVsApp = { navController.navigate("checkers_game") },
-                onOnline = { }
+                onOnline = { navController.navigate("checkers_online_lobby") }
             )
         }
 
         composable("checkers_game") {
-            CheckersScreen(
+            CheckersScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable("checkers_online_lobby") {
+            OnlineLobbyScreen(
+                gameType = "DAMAS",
+                onBack = { navController.popBackStack() },
+                onRoomCreated = { code, playerId ->
+                    onlineRoomCode = code
+                    onlinePlayerId = playerId
+                    navController.navigate("checkers_waiting")
+                },
+                onRoomJoined = { code, playerId ->
+                    onlineRoomCode = code
+                    onlinePlayerId = playerId
+                    navController.navigate("checkers_online_game")
+                }
+            )
+        }
+
+        composable("checkers_waiting") {
+            WaitingRoomScreen(
+                roomCode = onlineRoomCode,
+                gameType = "DAMAS",
+                playerId = onlinePlayerId,
+                onGameStart = {
+                    navController.navigate("checkers_online_game") {
+                        popUpTo("checkers_waiting") { inclusive = true }
+                    }
+                },
+                onCancel = { navController.popBackStack() }
+            )
+        }
+
+        composable("checkers_online_game") {
+            CheckersOnlineScreen(
+                roomCode = onlineRoomCode,
+                playerId = onlinePlayerId,
                 onBack = { navController.popBackStack() }
             )
         }
