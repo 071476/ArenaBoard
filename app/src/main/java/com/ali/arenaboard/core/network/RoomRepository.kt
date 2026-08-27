@@ -1,7 +1,6 @@
 package com.ali.arenaboard.core.network
 
 import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.postgrest.query.Columns
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -17,7 +16,10 @@ data class Room(
     val current_turn: String = "X",
     val winner: String? = null,
     val status: String = "waiting",
-    val created_at: String? = null
+    val created_at: String? = null,
+    val current_player: String? = "BLACK",
+    val score_black: Int? = 0,
+    val score_white: Int? = 0
 )
 
 object RoomRepository {
@@ -80,6 +82,7 @@ object RoomRepository {
             .update({
                 set("board", board)
                 set("current_turn", turn)
+                set("current_player", turn)
                 if (winner != null) set("winner", winner)
                 set("status", status)
             }) {
