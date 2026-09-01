@@ -52,4 +52,5 @@ dependencies {
     implementation(libs.supabase.realtime)
     implementation(libs.kotlinx.coroutines)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.play.services.ads)
 }

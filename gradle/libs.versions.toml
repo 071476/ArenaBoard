@@ -8,6 +8,7 @@ lifecycleRuntimeKtx = "2.8.7"
 supabase = "3.0.3"
 kotlinxCoroutines = "1.9.0"
 kotlinxSerialization = "1.7.3"
+ads = "23.6.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -23,6 +24,7 @@ supabase-postgrest = { group = "io.github.jan-tennert.supabase", name = "postgre
 supabase-realtime = { group = "io.github.jan-tennert.supabase", name = "realtime-kt", version.ref = "supabase" }
 kotlinx-coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "ads" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

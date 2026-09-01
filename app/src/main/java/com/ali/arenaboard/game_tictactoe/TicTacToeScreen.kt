@@ -1,6 +1,6 @@
 package com.ali.arenaboard.game_tictactoe
 
-import androidx.compose.animation.core.*
+import android.app.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,11 +12,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ali.arenaboard.core.ads.AdManager
+import com.ali.arenaboard.core.ads.BannerAdView
 import com.ali.arenaboard.ui.theme.*
 
 @Composable
@@ -27,6 +29,12 @@ fun TicTacToeScreen(
     val board = viewModel.board
     val currentPlayer = viewModel.currentPlayer
     val winner = viewModel.winner
+    val context = LocalContext.current
+    val activity = context as Activity
+
+    LaunchedEffect(Unit) {
+        AdManager.loadRewardedAd(context)
+    }
 
     Box(
         modifier = Modifier
@@ -41,7 +49,6 @@ fun TicTacToeScreen(
         ) {
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Botón atrás
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -64,7 +71,6 @@ fun TicTacToeScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Marcador
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -82,7 +88,6 @@ fun TicTacToeScreen(
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Tablero
             Column(
                 modifier = Modifier
                     .shadow(16.dp, RoundedCornerShape(20.dp))
@@ -105,7 +110,6 @@ fun TicTacToeScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Estado
             if (winner != null) {
                 val message = when (winner) {
                     "Empate" -> "¡Empate!"
@@ -139,6 +143,26 @@ fun TicTacToeScreen(
                         color = Background
                     )
                 }
+                Spacer(modifier = Modifier.height(12.dp))
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Gold)
+                        .clickable {
+                            AdManager.showRewardedAd(activity) {
+                                viewModel.resetGame()
+                            }
+                        }
+                        .padding(horizontal = 32.dp, vertical = 14.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Ver anuncio + Revancha 🎬",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Background
+                    )
+                }
             } else {
                 val statusColor = if (currentPlayer == "X") Green else PinkNeon
                 val statusText = if (currentPlayer == "X") "🟢 Tu turno" else "🔴 Turno de la App"
@@ -149,6 +173,10 @@ fun TicTacToeScreen(
                     color = statusColor
                 )
             }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            BannerAdView()
         }
     }
 }
@@ -156,22 +184,9 @@ fun TicTacToeScreen(
 @Composable
 fun ScoreCard(label: String, score: Int, color: Color, symbol: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = symbol,
-            fontSize = 24.sp
-        )
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextMuted
-        )
-        Text(
-            text = "$score",
-            fontSize = 36.sp,
-            fontWeight = FontWeight.Black,
-            color = color
-        )
+        Text(text = symbol, fontSize = 24.sp)
+        Text(text = label, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextMuted)
+        Text(text = "$score", fontSize = 36.sp, fontWeight = FontWeight.Black, color = color)
     }
 }
 
