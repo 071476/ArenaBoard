@@ -69,7 +69,34 @@ fun TicTacToeScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Nivel actual
+            val levelText = when (viewModel.level) {
+                1 -> "🟢 Nivel 1 — Fácil"
+                2 -> "🟡 Nivel 2 — Medio"
+                else -> "🔴 Nivel 3 — Difícil"
+            }
+            val levelColor = when (viewModel.level) {
+                1 -> Green
+                2 -> Gold
+                else -> PinkNeon
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Surface)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = levelText,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = levelColor
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -86,7 +113,7 @@ fun TicTacToeScreen(
                 ScoreCard(label = "APP", score = viewModel.scoreO, color = PinkNeon, symbol = "O")
             }
 
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             Column(
                 modifier = Modifier

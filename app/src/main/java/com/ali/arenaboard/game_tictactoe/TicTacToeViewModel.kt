@@ -23,6 +23,12 @@ class TicTacToeViewModel : ViewModel() {
     var scoreO by mutableIntStateOf(0)
         private set
 
+    var level by mutableIntStateOf(1)
+        private set
+
+    var consecutiveWins by mutableIntStateOf(0)
+        private set
+
     private val winPatterns = listOf(
         listOf(0, 1, 2), listOf(3, 4, 5), listOf(6, 7, 8),
         listOf(0, 3, 6), listOf(1, 4, 7), listOf(2, 5, 8),
@@ -38,14 +44,22 @@ class TicTacToeViewModel : ViewModel() {
 
         if (checkWinner(currentPlayer)) {
             winner = currentPlayer
-            if (currentPlayer == "X") scoreX++ else scoreO++
+            if (currentPlayer == "X") {
+                scoreX++
+                consecutiveWins++
+                if (consecutiveWins >= 2 && level < 3) {
+                    level++
+                    consecutiveWins = 0
+                }
+            } else {
+                scoreO++
+                consecutiveWins = 0
+            }
         } else if (board.all { it.isNotEmpty() }) {
             winner = "Empate"
         } else {
-            currentPlayer = if (currentPlayer == "X") "O" else "X"
-            if (currentPlayer == "O") {
-                aiMove()
-            }
+            currentPlayer = "O"
+            aiMove()
         }
     }
 
@@ -55,7 +69,12 @@ class TicTacToeViewModel : ViewModel() {
         }
         if (emptyCells.isEmpty() || winner != null) return
 
-        val move = emptyCells.random()
+        val move = when (level) {
+            1 -> aiLevel1(emptyCells)
+            2 -> aiLevel2(emptyCells)
+            else -> aiLevel3()
+        }
+
         val newBoard = board.toMutableList()
         newBoard[move] = "O"
         board = newBoard
@@ -63,6 +82,7 @@ class TicTacToeViewModel : ViewModel() {
         if (checkWinner("O")) {
             winner = "O"
             scoreO++
+            consecutiveWins = 0
         } else if (board.all { it.isNotEmpty() }) {
             winner = "Empate"
         } else {
@@ -70,9 +90,103 @@ class TicTacToeViewModel : ViewModel() {
         }
     }
 
+    // Nivel 1: Azar total
+    private fun aiLevel1(emptyCells: List<Int>): Int {
+        return emptyCells.random()
+    }
+
+    // Nivel 2: Bloquea y ataca
+    private fun aiLevel2(emptyCells: List<Int>): Int {
+        // 1. ¿Puede ganar? → Ganar
+        val winMove = findWinningMove("O")
+        if (winMove != null) return winMove
+
+        // 2. ¿El jugador puede ganar? → Bloquear
+        val blockMove = findWinningMove("X")
+        if (blockMove != null) return blockMove
+
+        // 3. ¿Centro libre? → Tomarlo
+        if (board[4].isEmpty()) return 4
+
+        // 4. Esquina libre
+        val corners = listOf(0, 2, 6, 8).filter { board[it].isEmpty() }
+        if (corners.isNotEmpty()) return corners.random()
+
+        // 5. Lo que quede
+        return emptyCells.random()
+    }
+
+    // Nivel 3: Invencible (minimax)
+    private fun aiLevel3(): Int {
+        var bestScore = Int.MIN_VALUE
+        var bestMove = -1
+
+        for (i in board.indices) {
+            if (board[i].isEmpty()) {
+                val newBoard = board.toMutableList()
+                newBoard[i] = "O"
+                val score = minimax(newBoard, false)
+                if (score > bestScore) {
+                    bestScore = score
+                    bestMove = i
+                }
+            }
+        }
+        return bestMove
+    }
+
+    private fun minimax(boardState: List<String>, isMaximizing: Boolean): Int {
+        // ¿Ganó la IA?
+        if (checkWinnerOnBoard(boardState, "O")) return 10
+        // ¿Ganó el jugador?
+        if (checkWinnerOnBoard(boardState, "X")) return -10
+        // ¿Empate?
+        if (boardState.all { it.isNotEmpty() }) return 0
+
+        if (isMaximizing) {
+            var best = Int.MIN_VALUE
+            for (i in boardState.indices) {
+                if (boardState[i].isEmpty()) {
+                    val newBoard = boardState.toMutableList()
+                    newBoard[i] = "O"
+                    best = maxOf(best, minimax(newBoard, false))
+                }
+            }
+            return best
+        } else {
+            var best = Int.MAX_VALUE
+            for (i in boardState.indices) {
+                if (boardState[i].isEmpty()) {
+                    val newBoard = boardState.toMutableList()
+                    newBoard[i] = "X"
+                    best = minOf(best, minimax(newBoard, true))
+                }
+            }
+            return best
+        }
+    }
+
+    private fun findWinningMove(player: String): Int? {
+        for (pattern in winPatterns) {
+            val values = pattern.map { board[it] }
+            val playerCount = values.count { it == player }
+            val emptyCount = values.count { it.isEmpty() }
+            if (playerCount == 2 && emptyCount == 1) {
+                return pattern[values.indexOf("")]
+            }
+        }
+        return null
+    }
+
     private fun checkWinner(player: String): Boolean {
         return winPatterns.any { pattern ->
             pattern.all { board[it] == player }
+        }
+    }
+
+    private fun checkWinnerOnBoard(boardState: List<String>, player: String): Boolean {
+        return winPatterns.any { pattern ->
+            pattern.all { boardState[it] == player }
         }
     }
 
