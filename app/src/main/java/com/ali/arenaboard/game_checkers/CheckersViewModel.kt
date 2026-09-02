@@ -64,7 +64,11 @@ class CheckersViewModel : ViewModel() {
         val pos = Position(row, col)
         val cell = board[row][col]
 
-        if (mustCaptureFrom != null && pos != mustCaptureFrom) {
+        if (mustCaptureFrom != null) {
+            if (pos in validMoves) {
+                executeMove(mustCaptureFrom!!, pos)
+                return
+            }
             if (cell == CellType.BLACK || cell == CellType.BLACK_KING) {
                 selectPiece(pos)
             }
@@ -157,6 +161,7 @@ class CheckersViewModel : ViewModel() {
         newBoard[move.to.row][move.to.col] = finalPiece
 
         var currentPos = move.to
+        var currentPiece = finalPiece
         var remainingCaptures = getCapturesFrom(currentPos, newBoard)
         while (remainingCaptures.isNotEmpty()) {
             val nextCapture = remainingCaptures.maxByOrNull { it.captures.size }!!
@@ -164,9 +169,10 @@ class CheckersViewModel : ViewModel() {
             for (cap in nextCapture.captures) {
                 newBoard[cap.row][cap.col] = CellType.EMPTY
             }
-            val promoted = if (finalPiece == CellType.WHITE && nextCapture.to.row == 7) CellType.WHITE_KING else finalPiece
+            val promoted = if (currentPiece == CellType.WHITE && nextCapture.to.row == 7) CellType.WHITE_KING else currentPiece
             newBoard[nextCapture.to.row][nextCapture.to.col] = promoted
             currentPos = nextCapture.to
+            currentPiece = promoted
             remainingCaptures = getCapturesFrom(currentPos, newBoard)
         }
 
