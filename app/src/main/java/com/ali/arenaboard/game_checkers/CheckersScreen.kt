@@ -34,6 +34,9 @@ fun CheckersScreen(
     val currentPlayer = viewModel.currentPlayer
     val winner = viewModel.winner
 
+    val blackPieces = board.flatten().count { it == CellType.BLACK || it == CellType.BLACK_KING }
+    val whitePieces = board.flatten().count { it == CellType.WHITE || it == CellType.WHITE_KING }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -77,10 +80,15 @@ fun CheckersScreen(
                     Text(text = "⚫", fontSize = 24.sp)
                     Text(text = "TÚ", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextMuted)
                     Text(
-                        text = "${viewModel.scorePlayer}",
-                        fontSize = 32.sp,
+                        text = "$blackPieces fichas",
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
                         color = BlueNeon
+                    )
+                    Text(
+                        text = "Ganadas: ${viewModel.scorePlayer}",
+                        fontSize = 12.sp,
+                        color = TextMuted
                     )
                 }
                 Text(
@@ -94,10 +102,15 @@ fun CheckersScreen(
                     Text(text = "⚪", fontSize = 24.sp)
                     Text(text = "APP", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextMuted)
                     Text(
-                        text = "${viewModel.scoreApp}",
-                        fontSize = 32.sp,
+                        text = "$whitePieces fichas",
+                        fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
                         color = PinkNeon
+                    )
+                    Text(
+                        text = "Ganadas: ${viewModel.scoreApp}",
+                        fontSize = 12.sp,
+                        color = TextMuted
                     )
                 }
             }
