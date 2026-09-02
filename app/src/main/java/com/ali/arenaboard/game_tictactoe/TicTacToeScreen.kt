@@ -69,9 +69,8 @@ fun TicTacToeScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Nivel actual
             val levelText = when (viewModel.level) {
                 1 -> "🟢 Nivel 1 — Fácil"
                 2 -> "🟡 Nivel 2 — Medio"
@@ -170,25 +169,28 @@ fun TicTacToeScreen(
                         color = Background
                     )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Gold)
-                        .clickable {
-                            AdManager.showRewardedAd(activity) {
-                                viewModel.resetGame()
+
+                if (viewModel.showAdOption) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Gold)
+                            .clickable {
+                                AdManager.showRewardedAd(activity) {
+                                    viewModel.resetGame()
+                                }
                             }
-                        }
-                        .padding(horizontal = 32.dp, vertical = 14.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Ver anuncio + Revancha 🎬",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Background
-                    )
+                            .padding(horizontal = 32.dp, vertical = 14.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Ver anuncio + Revancha 🎬",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Background
+                        )
+                    }
                 }
             } else {
                 val statusColor = if (currentPlayer == "X") Green else PinkNeon

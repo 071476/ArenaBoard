@@ -29,6 +29,12 @@ class TicTacToeViewModel : ViewModel() {
     var consecutiveWins by mutableIntStateOf(0)
         private set
 
+    var gamesPlayed by mutableIntStateOf(0)
+        private set
+
+    var showAdOption by mutableStateOf(false)
+        private set
+
     private val winPatterns = listOf(
         listOf(0, 1, 2), listOf(3, 4, 5), listOf(6, 7, 8),
         listOf(0, 3, 6), listOf(1, 4, 7), listOf(2, 5, 8),
@@ -44,6 +50,7 @@ class TicTacToeViewModel : ViewModel() {
 
         if (checkWinner(currentPlayer)) {
             winner = currentPlayer
+            gamesPlayed++
             if (currentPlayer == "X") {
                 scoreX++
                 consecutiveWins++
@@ -55,8 +62,11 @@ class TicTacToeViewModel : ViewModel() {
                 scoreO++
                 consecutiveWins = 0
             }
+            showAdOption = gamesPlayed % 3 == 0
         } else if (board.all { it.isNotEmpty() }) {
             winner = "Empate"
+            gamesPlayed++
+            showAdOption = gamesPlayed % 3 == 0
         } else {
             currentPlayer = "O"
             aiMove()
@@ -83,40 +93,36 @@ class TicTacToeViewModel : ViewModel() {
             winner = "O"
             scoreO++
             consecutiveWins = 0
+            gamesPlayed++
+            showAdOption = gamesPlayed % 3 == 0
         } else if (board.all { it.isNotEmpty() }) {
             winner = "Empate"
+            gamesPlayed++
+            showAdOption = gamesPlayed % 3 == 0
         } else {
             currentPlayer = "X"
         }
     }
 
-    // Nivel 1: Azar total
     private fun aiLevel1(emptyCells: List<Int>): Int {
         return emptyCells.random()
     }
 
-    // Nivel 2: Bloquea y ataca
     private fun aiLevel2(emptyCells: List<Int>): Int {
-        // 1. ¿Puede ganar? → Ganar
         val winMove = findWinningMove("O")
         if (winMove != null) return winMove
 
-        // 2. ¿El jugador puede ganar? → Bloquear
         val blockMove = findWinningMove("X")
         if (blockMove != null) return blockMove
 
-        // 3. ¿Centro libre? → Tomarlo
         if (board[4].isEmpty()) return 4
 
-        // 4. Esquina libre
         val corners = listOf(0, 2, 6, 8).filter { board[it].isEmpty() }
         if (corners.isNotEmpty()) return corners.random()
 
-        // 5. Lo que quede
         return emptyCells.random()
     }
 
-    // Nivel 3: Invencible (minimax)
     private fun aiLevel3(): Int {
         var bestScore = Int.MIN_VALUE
         var bestMove = -1
@@ -136,11 +142,8 @@ class TicTacToeViewModel : ViewModel() {
     }
 
     private fun minimax(boardState: List<String>, isMaximizing: Boolean): Int {
-        // ¿Ganó la IA?
         if (checkWinnerOnBoard(boardState, "O")) return 10
-        // ¿Ganó el jugador?
         if (checkWinnerOnBoard(boardState, "X")) return -10
-        // ¿Empate?
         if (boardState.all { it.isNotEmpty() }) return 0
 
         if (isMaximizing) {
@@ -194,5 +197,6 @@ class TicTacToeViewModel : ViewModel() {
         board = List(9) { "" }
         currentPlayer = "X"
         winner = null
+        showAdOption = false
     }
 }
