@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,8 +27,14 @@ val HighlightSquare = Color(0xFF00E5FF).copy(alpha = 0.3f)
 @Composable
 fun CheckersScreen(
     onBack: () -> Unit,
+    rules: GameRules = GameRules.AMERICAN,
     viewModel: CheckersViewModel = viewModel()
 ) {
+    // Aplicar reglas al ViewModel
+    LaunchedEffect(rules) {
+        viewModel.setRules(rules)
+    }
+
     val board = viewModel.board
     val selectedCell = viewModel.selectedCell
     val validMoves = viewModel.validMoves
@@ -70,7 +77,24 @@ fun CheckersScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+
+            val rulesText = if (viewModel.rules == GameRules.AMERICAN) "🇺🇸 Americanas" else "🌍 Internacionales"
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Surface)
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = rulesText,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (viewModel.rules == GameRules.AMERICAN) Green else PinkNeon
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -79,43 +103,19 @@ fun CheckersScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(text = "⚫", fontSize = 24.sp)
                     Text(text = "TÚ", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextMuted)
-                    Text(
-                        text = "$blackPieces fichas",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Black,
-                        color = BlueNeon
-                    )
-                    Text(
-                        text = "Ganadas: ${viewModel.scorePlayer}",
-                        fontSize = 12.sp,
-                        color = TextMuted
-                    )
+                    Text(text = "$blackPieces fichas", fontSize = 18.sp, fontWeight = FontWeight.Black, color = BlueNeon)
+                    Text(text = "Ganadas: ${viewModel.scorePlayer}", fontSize = 12.sp, color = TextMuted)
                 }
-                Text(
-                    text = "VS",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Black,
-                    color = TextMuted,
-                    modifier = Modifier.align(Alignment.CenterVertically)
-                )
+                Text(text = "VS", fontSize = 20.sp, fontWeight = FontWeight.Black, color = TextMuted, modifier = Modifier.align(Alignment.CenterVertically))
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(text = "⚪", fontSize = 24.sp)
                     Text(text = "APP", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextMuted)
-                    Text(
-                        text = "$whitePieces fichas",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Black,
-                        color = PinkNeon
-                    )
-                    Text(
-                        text = "Ganadas: ${viewModel.scoreApp}",
-                        fontSize = 12.sp,
-                        color = TextMuted
-                    )
+                    Text(text = "$whitePieces fichas", fontSize = 18.sp, fontWeight = FontWeight.Black, color = PinkNeon)
+                    Text(text = "Ganadas: ${viewModel.scoreApp}", fontSize = 12.sp, color = TextMuted)
                 }
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Column(
                 modifier = Modifier
@@ -143,10 +143,7 @@ fun CheckersScreen(
                                 modifier = Modifier
                                     .size(42.dp)
                                     .background(bgColor)
-                                    .then(
-                                        if (isValidMove) Modifier.border(2.dp, Green.copy(alpha = 0.5f))
-                                        else Modifier
-                                    )
+                                    .then(if (isValidMove) Modifier.border(2.dp, Green.copy(alpha = 0.5f)) else Modifier)
                                     .clickable { viewModel.onCellClick(row, col) },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -166,16 +163,8 @@ fun CheckersScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             if (winner != null) {
-                val color = when {
-                    winner!!.contains("Ganaste") -> Gold
-                    else -> PinkNeon
-                }
-                Text(
-                    text = winner!!,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Black,
-                    color = color
-                )
+                val color = if (winner!!.contains("Ganaste")) Gold else PinkNeon
+                Text(text = winner!!, fontSize = 26.sp, fontWeight = FontWeight.Black, color = color)
                 Spacer(modifier = Modifier.height(16.dp))
                 Box(
                     modifier = Modifier
@@ -185,22 +174,12 @@ fun CheckersScreen(
                         .padding(horizontal = 32.dp, vertical = 14.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Revancha 🔄",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Background
-                    )
+                    Text(text = "Revancha 🔄", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Background)
                 }
             } else {
                 val statusColor = if (currentPlayer == CellType.BLACK) Green else PinkNeon
                 val statusText = if (currentPlayer == CellType.BLACK) "🟢 Tu turno" else "🔴 Turno de la App"
-                Text(
-                    text = statusText,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = statusColor
-                )
+                Text(text = statusText, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = statusColor)
             }
         }
     }
@@ -217,12 +196,7 @@ fun Piece(color: Color, isKing: Boolean) {
         contentAlignment = Alignment.Center
     ) {
         if (isKing) {
-            Text(
-                text = "♛",
-                fontSize = 16.sp,
-                color = Background,
-                fontWeight = FontWeight.Black
-            )
+            Text(text = "♛", fontSize = 16.sp, color = Background, fontWeight = FontWeight.Black)
         }
     }
 }

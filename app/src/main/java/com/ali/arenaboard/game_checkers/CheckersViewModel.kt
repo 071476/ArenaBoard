@@ -12,7 +12,12 @@ data class Move(val from: Position, val to: Position, val captures: List<Positio
 
 enum class CellType { EMPTY, BLACK, WHITE, BLACK_KING, WHITE_KING }
 
+enum class GameRules { AMERICAN, INTERNATIONAL }
+
 class CheckersViewModel : ViewModel() {
+
+    var rules by mutableStateOf(GameRules.AMERICAN)
+        private set
 
     var board by mutableStateOf(createInitialBoard())
         private set
@@ -35,20 +40,21 @@ class CheckersViewModel : ViewModel() {
     var scoreApp by mutableIntStateOf(0)
         private set
 
+    fun setRules(newRules: GameRules) {
+        rules = newRules
+        resetGame()
+    }
+
     private fun createInitialBoard(): List<List<CellType>> {
         val board = MutableList(8) { MutableList(8) { CellType.EMPTY } }
         for (row in 0..2) {
             for (col in 0..7) {
-                if ((row + col) % 2 == 1) {
-                    board[row][col] = CellType.WHITE
-                }
+                if ((row + col) % 2 == 1) board[row][col] = CellType.WHITE
             }
         }
         for (row in 5..7) {
             for (col in 0..7) {
-                if ((row + col) % 2 == 1) {
-                    board[row][col] = CellType.BLACK
-                }
+                if ((row + col) % 2 == 1) board[row][col] = CellType.BLACK
             }
         }
         return board
@@ -61,13 +67,11 @@ class CheckersViewModel : ViewModel() {
         val pos = Position(row, col)
         val cell = board[row][col]
 
-        // Si hay una ficha seleccionada y toca una casilla válida
         if (selectedCell != null && pos in validMoves) {
             executePlayerMove(selectedCell!!, pos)
             return
         }
 
-        // Seleccionar ficha propia
         if (cell == CellType.BLACK || cell == CellType.BLACK_KING) {
             selectedCell = pos
             validMoves = getMovesFor(pos).map { it.to }
@@ -81,12 +85,10 @@ class CheckersViewModel : ViewModel() {
         val piece = newBoard[from.row][from.col]
         newBoard[from.row][from.col] = CellType.EMPTY
 
-        // Si es captura, eliminar la ficha comida
         for (cap in move.captures) {
             newBoard[cap.row][cap.col] = CellType.EMPTY
         }
 
-        // Promover si llega al otro lado
         val finalPiece = promoteIfNeeded(piece, to.row)
         newBoard[to.row][to.col] = finalPiece
 
@@ -96,7 +98,6 @@ class CheckersViewModel : ViewModel() {
 
         if (checkGameEnd()) return
 
-        // Turno de la IA
         currentPlayer = CellType.WHITE
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             aiMove()
@@ -111,10 +112,8 @@ class CheckersViewModel : ViewModel() {
             return
         }
 
-        // Separar capturas de movimientos normales
         val captureMoves = allMoves.filter { it.captures.isNotEmpty() }
         val move = if (captureMoves.isNotEmpty()) {
-            // Obligatorio: comer la captura más grande
             captureMoves.maxByOrNull { it.captures.size }!!
         } else {
             allMoves.random()
@@ -124,12 +123,10 @@ class CheckersViewModel : ViewModel() {
         val piece = newBoard[move.from.row][move.from.col]
         newBoard[move.from.row][move.from.col] = CellType.EMPTY
 
-        // Si es captura, eliminar UNA ficha comida
         for (cap in move.captures) {
             newBoard[cap.row][cap.col] = CellType.EMPTY
         }
 
-        // Promover si llega al otro lado
         val finalPiece = promoteIfNeeded(piece, move.to.row)
         newBoard[move.to.row][move.to.col] = finalPiece
 
@@ -153,7 +150,6 @@ class CheckersViewModel : ViewModel() {
             scoreApp++
             return true
         }
-
         if (currentPlayer == CellType.BLACK && getAllMovesFor(CellType.BLACK).isEmpty()) {
             winner = "La App ganó 🤖"
             scoreApp++
@@ -164,17 +160,13 @@ class CheckersViewModel : ViewModel() {
             scorePlayer++
             return true
         }
-
         return false
     }
 
-    // Obtiene los movimientos válidos para una ficha
-    // Si hay capturas disponibles EN EL TABLERO, solo permite capturas
     private fun getMovesFor(pos: Position): List<Move> {
         val piece = board[pos.row][pos.col]
         val allCaptures = getAllCapturesFor(getPlayerOf(piece))
         if (allCaptures.isNotEmpty()) {
-            // Si hay capturas obligatorias, solo devolver capturas de esta ficha
             return getCapturesFrom(pos)
         }
         return getSimpleMovesFrom(pos)
@@ -192,12 +184,28 @@ class CheckersViewModel : ViewModel() {
         val piece = board[pos.row][pos.col]
         val directions = getDirections(piece)
         val moves = mutableListOf<Move>()
+
         for (dir in directions) {
-            // Solo UNA casilla
-            val newRow = pos.row + dir.first
-            val newCol = pos.col + dir.second
-            if (newRow in 0..7 && newCol in 0..7 && board[newRow][newCol] == CellType.EMPTY) {
-                moves.add(Move(pos, Position(newRow, newCol)))
+            if (isQueen(piece) && rules == GameRules.INTERNATIONAL) {
+                // Reina internacional: vuela varios cuadros
+                var r = pos.row + dir.first
+                var c = pos.col + dir.second
+                while (r in 0..7 && c in 0..7) {
+                    if (board[r][c] == CellType.EMPTY) {
+                        moves.add(Move(pos, Position(r, c)))
+                    } else {
+                        break // Hay una ficha, no puede pasar
+                    }
+                    r += dir.first
+                    c += dir.second
+                }
+            } else {
+                // Peón o reina americana: solo 1 casilla
+                val r = pos.row + dir.first
+                val c = pos.col + dir.second
+                if (r in 0..7 && c in 0..7 && board[r][c] == CellType.EMPTY) {
+                    moves.add(Move(pos, Position(r, c)))
+                }
             }
         }
         return moves
@@ -207,29 +215,64 @@ class CheckersViewModel : ViewModel() {
         val piece = boardState[pos.row][pos.col]
         val directions = getDirections(piece)
         val captures = mutableListOf<Move>()
+
         for (dir in directions) {
-            // La captura siempre es de EXACTAMENTE 2 casillas
-            val midRow = pos.row + dir.first
-            val midCol = pos.col + dir.second
-            val endRow = pos.row + dir.first * 2
-            val endCol = pos.col + dir.second * 2
-            if (endRow in 0..7 && endCol in 0..7) {
-                val midPiece = boardState[midRow][midCol]
-                val endCell = boardState[endRow][endCol]
-                if (midPiece != CellType.EMPTY && isOpponent(piece, midPiece) && endCell == CellType.EMPTY) {
-                    captures.add(Move(pos, Position(endRow, endCol), listOf(Position(midRow, midCol))))
+            if (isQueen(piece) && rules == GameRules.INTERNATIONAL) {
+                // Reina internacional: puede capturar desde lejos
+                var r = pos.row + dir.first
+                var c = pos.col + dir.second
+                var foundEnemy = false
+                var enemyPos: Position? = null
+
+                while (r in 0..7 && c in 0..7) {
+                    val cell = boardState[r][c]
+                    if (!foundEnemy) {
+                        if (cell != CellType.EMPTY) {
+                            if (isOpponent(piece, cell)) {
+                                foundEnemy = true
+                                enemyPos = Position(r, c)
+                            } else {
+                                break // Ficha propia bloquea
+                            }
+                        }
+                    } else {
+                        // Después del enemigo: solo casillas vacías para aterrizar
+                        if (cell == CellType.EMPTY) {
+                            captures.add(Move(pos, Position(r, c), listOf(enemyPos!!)))
+                        } else {
+                            break // Ficha después del enemigo
+                        }
+                    }
+                    r += dir.first
+                    c += dir.second
+                }
+            } else {
+                // Peón o reina americana: brinca 2 casillas
+                val midR = pos.row + dir.first
+                val midC = pos.col + dir.second
+                val endR = pos.row + dir.first * 2
+                val endC = pos.col + dir.second * 2
+                if (endR in 0..7 && endC in 0..7) {
+                    val midPiece = boardState[midR][midC]
+                    val endCell = boardState[endR][endC]
+                    if (midPiece != CellType.EMPTY && isOpponent(piece, midPiece) && endCell == CellType.EMPTY) {
+                        captures.add(Move(pos, Position(endR, endC), listOf(Position(midR, midC))))
+                    }
                 }
             }
         }
         return captures
     }
 
+    private fun isQueen(piece: CellType): Boolean {
+        return piece == CellType.BLACK_KING || piece == CellType.WHITE_KING
+    }
+
     private fun getDirections(piece: CellType): List<Pair<Int, Int>> {
         return when (piece) {
-            CellType.BLACK -> listOf(-1 to -1, -1 to 1)         // Arriba
-            CellType.WHITE -> listOf(1 to -1, 1 to 1)           // Abajo
-            CellType.BLACK_KING -> listOf(-1 to -1, -1 to 1, 1 to -1, 1 to 1)  // 4 direcciones
-            CellType.WHITE_KING -> listOf(-1 to -1, -1 to 1, 1 to -1, 1 to 1)  // 4 direcciones
+            CellType.BLACK -> listOf(-1 to -1, -1 to 1)
+            CellType.WHITE -> listOf(1 to -1, 1 to 1)
+            CellType.BLACK_KING, CellType.WHITE_KING -> listOf(-1 to -1, -1 to 1, 1 to -1, 1 to 1)
             else -> emptyList()
         }
     }

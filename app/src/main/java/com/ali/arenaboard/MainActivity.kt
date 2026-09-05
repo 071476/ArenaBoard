@@ -13,7 +13,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.ali.arenaboard.game_checkers.CheckersOnlineScreen
+import com.ali.arenaboard.game_checkers.CheckersRulesScreen
 import com.ali.arenaboard.game_checkers.CheckersScreen
+import com.ali.arenaboard.game_checkers.GameRules
 import com.ali.arenaboard.game_tictactoe.TicTacToeOnlineScreen
 import com.ali.arenaboard.game_tictactoe.TicTacToeScreen
 import com.ali.arenaboard.ui.theme.ArenaBoardTheme
@@ -35,6 +37,7 @@ fun ArenaNavigation() {
     val navController = rememberNavController()
     var onlineRoomCode by remember { mutableStateOf("") }
     var onlinePlayerId by remember { mutableStateOf("") }
+    var checkersRules by remember { mutableStateOf(GameRules.AMERICAN) }
 
     NavHost(navController = navController, startDestination = "home") {
 
@@ -103,13 +106,30 @@ fun ArenaNavigation() {
             ModeSelectionScreen(
                 gameName = "DAMAS",
                 onBack = { navController.popBackStack() },
-                onVsApp = { navController.navigate("checkers_game") },
+                onVsApp = { navController.navigate("checkers_rules") },
                 onOnline = { navController.navigate("checkers_online_lobby") }
             )
         }
 
+        composable("checkers_rules") {
+            CheckersRulesScreen(
+                onBack = { navController.popBackStack() },
+                onAmerican = {
+                    checkersRules = GameRules.AMERICAN
+                    navController.navigate("checkers_game")
+                },
+                onInternational = {
+                    checkersRules = GameRules.INTERNATIONAL
+                    navController.navigate("checkers_game")
+                }
+            )
+        }
+
         composable("checkers_game") {
-            CheckersScreen(onBack = { navController.popBackStack() })
+            CheckersScreen(
+                onBack = { navController.popBackStack() },
+                rules = checkersRules
+            )
         }
 
         composable("checkers_online_lobby") {
