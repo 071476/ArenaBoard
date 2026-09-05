@@ -35,9 +35,6 @@ class CheckersViewModel : ViewModel() {
     var scoreApp by mutableIntStateOf(0)
         private set
 
-    var mustCaptureFrom by mutableStateOf<Position?>(null)
-        private set
-
     private fun createInitialBoard(): List<List<CellType>> {
         val board = MutableList(8) { MutableList(8) { CellType.EMPTY } }
         for (row in 0..2) {
@@ -64,67 +61,42 @@ class CheckersViewModel : ViewModel() {
         val pos = Position(row, col)
         val cell = board[row][col]
 
-        if (mustCaptureFrom != null) {
-            if (pos in validMoves) {
-                executeMove(mustCaptureFrom!!, pos)
-                return
-            }
-            if (cell == CellType.BLACK || cell == CellType.BLACK_KING) {
-                selectPiece(pos)
-            }
+        // Si hay una ficha seleccionada y toca una casilla válida
+        if (selectedCell != null && pos in validMoves) {
+            executePlayerMove(selectedCell!!, pos)
             return
         }
 
+        // Seleccionar ficha propia
         if (cell == CellType.BLACK || cell == CellType.BLACK_KING) {
-            selectPiece(pos)
-        } else if (selectedCell != null && pos in validMoves) {
-            executeMove(selectedCell!!, pos)
+            selectedCell = pos
+            validMoves = getMovesFor(pos).map { it.to }
         }
     }
 
-    private fun selectPiece(pos: Position) {
-        selectedCell = pos
-        val moves = getValidMovesFor(pos)
-        validMoves = moves.map { it.to }
-    }
-
-    private fun executeMove(from: Position, to: Position) {
-        val allMoves = getValidMovesFor(from)
-        val move = allMoves.find { it.to == to } ?: return
+    private fun executePlayerMove(from: Position, to: Position) {
+        val move = getMovesFor(from).find { it.to == to } ?: return
 
         val newBoard = board.map { it.toMutableList() }.toMutableList()
         val piece = newBoard[from.row][from.col]
         newBoard[from.row][from.col] = CellType.EMPTY
 
+        // Si es captura, eliminar la ficha comida
         for (cap in move.captures) {
             newBoard[cap.row][cap.col] = CellType.EMPTY
         }
 
-        val finalPiece = when {
-            piece == CellType.BLACK && to.row == 0 -> CellType.BLACK_KING
-            piece == CellType.WHITE && to.row == 7 -> CellType.WHITE_KING
-            else -> piece
-        }
+        // Promover si llega al otro lado
+        val finalPiece = promoteIfNeeded(piece, to.row)
         newBoard[to.row][to.col] = finalPiece
 
         board = newBoard
-
-        if (move.captures.isNotEmpty()) {
-            val moreCaptures = getCapturesFrom(to)
-            if (moreCaptures.isNotEmpty()) {
-                selectedCell = to
-                validMoves = moreCaptures.map { it.to }
-                mustCaptureFrom = to
-                return
-            }
-        }
-
-        mustCaptureFrom = null
         selectedCell = null
         validMoves = emptyList()
 
         if (checkGameEnd()) return
 
+        // Turno de la IA
         currentPlayer = CellType.WHITE
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             aiMove()
@@ -139,8 +111,10 @@ class CheckersViewModel : ViewModel() {
             return
         }
 
+        // Separar capturas de movimientos normales
         val captureMoves = allMoves.filter { it.captures.isNotEmpty() }
         val move = if (captureMoves.isNotEmpty()) {
+            // Obligatorio: comer la captura más grande
             captureMoves.maxByOrNull { it.captures.size }!!
         } else {
             allMoves.random()
@@ -150,36 +124,18 @@ class CheckersViewModel : ViewModel() {
         val piece = newBoard[move.from.row][move.from.col]
         newBoard[move.from.row][move.from.col] = CellType.EMPTY
 
+        // Si es captura, eliminar UNA ficha comida
         for (cap in move.captures) {
             newBoard[cap.row][cap.col] = CellType.EMPTY
         }
 
-        val finalPiece = when {
-            piece == CellType.WHITE && move.to.row == 7 -> CellType.WHITE_KING
-            else -> piece
-        }
+        // Promover si llega al otro lado
+        val finalPiece = promoteIfNeeded(piece, move.to.row)
         newBoard[move.to.row][move.to.col] = finalPiece
-
-        var currentPos = move.to
-        var currentPiece = finalPiece
-        var remainingCaptures = getCapturesFrom(currentPos, newBoard)
-        while (remainingCaptures.isNotEmpty()) {
-            val nextCapture = remainingCaptures.maxByOrNull { it.captures.size }!!
-            newBoard[currentPos.row][currentPos.col] = CellType.EMPTY
-            for (cap in nextCapture.captures) {
-                newBoard[cap.row][cap.col] = CellType.EMPTY
-            }
-            val promoted = if (currentPiece == CellType.WHITE && nextCapture.to.row == 7) CellType.WHITE_KING else currentPiece
-            newBoard[nextCapture.to.row][nextCapture.to.col] = promoted
-            currentPos = nextCapture.to
-            currentPiece = promoted
-            remainingCaptures = getCapturesFrom(currentPos, newBoard)
-        }
 
         board = newBoard
 
         if (checkGameEnd()) return
-
         currentPlayer = CellType.BLACK
     }
 
@@ -212,10 +168,24 @@ class CheckersViewModel : ViewModel() {
         return false
     }
 
-    private fun getValidMovesFor(pos: Position): List<Move> {
-        val captures = getCapturesFrom(pos)
-        if (captures.isNotEmpty()) return captures
+    // Obtiene los movimientos válidos para una ficha
+    // Si hay capturas disponibles EN EL TABLERO, solo permite capturas
+    private fun getMovesFor(pos: Position): List<Move> {
+        val piece = board[pos.row][pos.col]
+        val allCaptures = getAllCapturesFor(getPlayerOf(piece))
+        if (allCaptures.isNotEmpty()) {
+            // Si hay capturas obligatorias, solo devolver capturas de esta ficha
+            return getCapturesFrom(pos)
+        }
         return getSimpleMovesFrom(pos)
+    }
+
+    private fun getPlayerOf(piece: CellType): CellType {
+        return when (piece) {
+            CellType.BLACK, CellType.BLACK_KING -> CellType.BLACK
+            CellType.WHITE, CellType.WHITE_KING -> CellType.WHITE
+            else -> CellType.EMPTY
+        }
     }
 
     private fun getSimpleMovesFrom(pos: Position): List<Move> {
@@ -223,6 +193,7 @@ class CheckersViewModel : ViewModel() {
         val directions = getDirections(piece)
         val moves = mutableListOf<Move>()
         for (dir in directions) {
+            // Solo UNA casilla
             val newRow = pos.row + dir.first
             val newCol = pos.col + dir.second
             if (newRow in 0..7 && newCol in 0..7 && board[newRow][newCol] == CellType.EMPTY) {
@@ -237,6 +208,7 @@ class CheckersViewModel : ViewModel() {
         val directions = getDirections(piece)
         val captures = mutableListOf<Move>()
         for (dir in directions) {
+            // La captura siempre es de EXACTAMENTE 2 casillas
             val midRow = pos.row + dir.first
             val midCol = pos.col + dir.second
             val endRow = pos.row + dir.first * 2
@@ -254,9 +226,10 @@ class CheckersViewModel : ViewModel() {
 
     private fun getDirections(piece: CellType): List<Pair<Int, Int>> {
         return when (piece) {
-            CellType.BLACK -> listOf(-1 to -1, -1 to 1)
-            CellType.WHITE -> listOf(1 to -1, 1 to 1)
-            CellType.BLACK_KING, CellType.WHITE_KING -> listOf(-1 to -1, -1 to 1, 1 to -1, 1 to 1)
+            CellType.BLACK -> listOf(-1 to -1, -1 to 1)         // Arriba
+            CellType.WHITE -> listOf(1 to -1, 1 to 1)           // Abajo
+            CellType.BLACK_KING -> listOf(-1 to -1, -1 to 1, 1 to -1, 1 to 1)  // 4 direcciones
+            CellType.WHITE_KING -> listOf(-1 to -1, -1 to 1, 1 to -1, 1 to 1)  // 4 direcciones
             else -> emptyList()
         }
     }
@@ -267,7 +240,7 @@ class CheckersViewModel : ViewModel() {
         return (piece in blackPieces && other in whitePieces) || (piece in whitePieces && other in blackPieces)
     }
 
-    private fun getAllMovesFor(player: CellType): List<Move> {
+    private fun getAllCapturesFor(player: CellType): List<Move> {
         val pieces = mutableListOf<Position>()
         for (r in 0..7) {
             for (c in 0..7) {
@@ -280,9 +253,34 @@ class CheckersViewModel : ViewModel() {
                 }
             }
         }
-        val allCaptures = pieces.flatMap { getCapturesFrom(it) }
+        return pieces.flatMap { getCapturesFrom(it) }
+    }
+
+    private fun getAllMovesFor(player: CellType): List<Move> {
+        val allCaptures = getAllCapturesFor(player)
         if (allCaptures.isNotEmpty()) return allCaptures
+
+        val pieces = mutableListOf<Position>()
+        for (r in 0..7) {
+            for (c in 0..7) {
+                val cell = board[r][c]
+                if (player == CellType.BLACK && (cell == CellType.BLACK || cell == CellType.BLACK_KING)) {
+                    pieces.add(Position(r, c))
+                }
+                if (player == CellType.WHITE && (cell == CellType.WHITE || cell == CellType.WHITE_KING)) {
+                    pieces.add(Position(r, c))
+                }
+            }
+        }
         return pieces.flatMap { getSimpleMovesFrom(it) }
+    }
+
+    private fun promoteIfNeeded(piece: CellType, row: Int): CellType {
+        return when {
+            piece == CellType.BLACK && row == 0 -> CellType.BLACK_KING
+            piece == CellType.WHITE && row == 7 -> CellType.WHITE_KING
+            else -> piece
+        }
     }
 
     fun resetGame() {
@@ -291,6 +289,5 @@ class CheckersViewModel : ViewModel() {
         validMoves = emptyList()
         currentPlayer = CellType.BLACK
         winner = null
-        mustCaptureFrom = null
     }
 }
