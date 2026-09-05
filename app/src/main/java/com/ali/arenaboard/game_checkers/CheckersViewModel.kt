@@ -40,7 +40,7 @@ class CheckersViewModel : ViewModel() {
     var scoreApp by mutableIntStateOf(0)
         private set
 
-    fun setRules(newRules: GameRules) {
+    fun aplicarReglas(newRules: GameRules) {
         rules = newRules
         resetGame()
     }
@@ -187,20 +187,18 @@ class CheckersViewModel : ViewModel() {
 
         for (dir in directions) {
             if (isQueen(piece) && rules == GameRules.INTERNATIONAL) {
-                // Reina internacional: vuela varios cuadros
                 var r = pos.row + dir.first
                 var c = pos.col + dir.second
                 while (r in 0..7 && c in 0..7) {
                     if (board[r][c] == CellType.EMPTY) {
                         moves.add(Move(pos, Position(r, c)))
                     } else {
-                        break // Hay una ficha, no puede pasar
+                        break
                     }
                     r += dir.first
                     c += dir.second
                 }
             } else {
-                // Peón o reina americana: solo 1 casilla
                 val r = pos.row + dir.first
                 val c = pos.col + dir.second
                 if (r in 0..7 && c in 0..7 && board[r][c] == CellType.EMPTY) {
@@ -218,7 +216,6 @@ class CheckersViewModel : ViewModel() {
 
         for (dir in directions) {
             if (isQueen(piece) && rules == GameRules.INTERNATIONAL) {
-                // Reina internacional: puede capturar desde lejos
                 var r = pos.row + dir.first
                 var c = pos.col + dir.second
                 var foundEnemy = false
@@ -232,22 +229,20 @@ class CheckersViewModel : ViewModel() {
                                 foundEnemy = true
                                 enemyPos = Position(r, c)
                             } else {
-                                break // Ficha propia bloquea
+                                break
                             }
                         }
                     } else {
-                        // Después del enemigo: solo casillas vacías para aterrizar
                         if (cell == CellType.EMPTY) {
                             captures.add(Move(pos, Position(r, c), listOf(enemyPos!!)))
                         } else {
-                            break // Ficha después del enemigo
+                            break
                         }
                     }
                     r += dir.first
                     c += dir.second
                 }
             } else {
-                // Peón o reina americana: brinca 2 casillas
                 val midR = pos.row + dir.first
                 val midC = pos.col + dir.second
                 val endR = pos.row + dir.first * 2

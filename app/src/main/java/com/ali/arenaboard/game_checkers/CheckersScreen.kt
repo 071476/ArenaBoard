@@ -30,9 +30,8 @@ fun CheckersScreen(
     rules: GameRules = GameRules.AMERICAN,
     viewModel: CheckersViewModel = viewModel()
 ) {
-    // Aplicar reglas al ViewModel
     LaunchedEffect(rules) {
-        viewModel.setRules(rules)
+        viewModel.aplicarReglas(rules)
     }
 
     val board = viewModel.board
