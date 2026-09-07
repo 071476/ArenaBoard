@@ -15,7 +15,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.TextStyle
@@ -49,14 +48,15 @@ fun CheckersScreen(
     val blackPieces = board.flatten().count { it == CellType.BLACK || it == CellType.BLACK_KING }
     val whitePieces = board.flatten().count { it == CellType.WHITE || it == CellType.WHITE_KING }
     val movablePieces = viewModel.getMovablePieces()
+    val mustCapture = viewModel.hasForcedCaptures()
 
-    // Animación pulsante para fichas que deben comer
+    // Animación pulsante
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 0.3f,
         targetValue = 1.0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = FastOutSlowInEasing),
+            animation = tween(500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "alpha"
@@ -65,14 +65,17 @@ fun CheckersScreen(
         initialValue = 1f,
         targetValue = 1.15f,
         animationSpec = infiniteRepeatable(
-            animation = tween(600, easing = FastOutSlowInEasing),
+            animation = tween(500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "scale"
     )
 
-    // ¿Hay captura obligatoria?
-    val mustCapture = viewModel.hasForcedCaptures()
+    // Datos de la animación de la IA
+    val aiPhase = viewModel.aiPhase
+    val aiFromCell = viewModel.aiFromCell
+    val aiToCell = viewModel.aiToCell
+    val aiCaptureTarget = viewModel.aiCaptureTarget
 
     Box(
         modifier = Modifier
@@ -148,30 +151,58 @@ fun CheckersScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Indicador de estado
-            if (winner == null && currentPlayer == CellType.BLACK) {
-                if (mustCapture && selectedCell == null) {
+            when {
+                aiPhase == AiPhase.THINKING -> {
                     Text(
-                        text = "⚡ ¡DEBES COMER! Toca la ficha que brilla ⚡",
-                        fontSize = 14.sp,
+                        text = "🤖 La App está pensando...",
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = CaptureGlow
-                    )
-                } else if (selectedCell != null && mustCapture) {
-                    Text(
-                        text = "⚡ Toca la casilla ROJA para comer ⚡",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = CaptureGlow
-                    )
-                } else if (selectedCell == null) {
-                    Text(
-                        text = "Toca una ficha con borde brillante ✨",
-                        fontSize = 13.sp,
-                        color = Gold
+                        color = PinkNeon
                     )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
+                aiPhase == AiPhase.MOVING -> {
+                    if (aiCaptureTarget != null) {
+                        Text(
+                            text = "🤖 ¡La App va a comer!",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFF4444)
+                        )
+                    } else {
+                        Text(
+                            text = "🤖 La App se mueve...",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = PinkNeon
+                        )
+                    }
+                }
+                winner == null && currentPlayer == CellType.BLACK -> {
+                    if (mustCapture && selectedCell == null) {
+                        Text(
+                            text = "⚡ ¡DEBES COMER! Toca la ficha que brilla ⚡",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CaptureGlow
+                        )
+                    } else if (selectedCell != null && mustCapture) {
+                        Text(
+                            text = "⚡ Toca la casilla ROJA para comer ⚡",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = CaptureGlow
+                        )
+                    } else if (selectedCell == null) {
+                        Text(
+                            text = "Toca una ficha con borde brillante ✨",
+                            fontSize = 13.sp,
+                            color = Gold
+                        )
+                    }
+                }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Tablero
             Column(
@@ -191,19 +222,40 @@ fun CheckersScreen(
                             val canMove = pos in movablePieces
                             val cell = board[row][col]
 
-                            // Determinar si esta ficha tiene captura obligatoria
                             val hasCapture = canMove && mustCapture && viewModel.pieceHasCapture(pos)
 
+                            // Animación de la IA
+                            val isAiFrom = pos == aiFromCell
+                            val isAiTo = pos == aiToCell
+                            val isAiCapture = pos == aiCaptureTarget
+
                             val bgColor = when {
+                                isAiFrom && aiPhase != AiPhase.NONE -> Color(0xFFFF1493).copy(alpha = pulseAlpha * 0.3f)
+                                isAiTo && aiPhase == AiPhase.MOVING -> Color(0xFF00E676).copy(alpha = pulseAlpha * 0.3f)
+                                isAiCapture && aiPhase == AiPhase.MOVING -> Color(0xFFFF4444).copy(alpha = pulseAlpha * 0.35f)
                                 isSelected -> HighlightSquare
                                 isValidMove && mustCapture -> CaptureGlow.copy(alpha = 0.25f)
-                                isValidMove -> Green.copy(alpha = 0.2f)
+                                isValidMove -> Color(0xFF00E676).copy(alpha = 0.2f)
                                 isDark -> DarkSquare
                                 else -> LightSquare
                             }
 
-                            // Borde de la celda
                             val borderModifier = when {
+                                isAiFrom && aiPhase != AiPhase.NONE -> Modifier.border(
+                                    3.dp,
+                                    Color(0xFFFF1493).copy(alpha = pulseAlpha),
+                                    RoundedCornerShape(4.dp)
+                                )
+                                isAiTo && aiPhase == AiPhase.MOVING -> Modifier.border(
+                                    3.dp,
+                                    Color(0xFF00E676).copy(alpha = pulseAlpha),
+                                    RoundedCornerShape(4.dp)
+                                )
+                                isAiCapture && aiPhase == AiPhase.MOVING -> Modifier.border(
+                                    3.dp,
+                                    Color(0xFFFF4444).copy(alpha = pulseAlpha),
+                                    RoundedCornerShape(4.dp)
+                                )
                                 isValidMove && mustCapture -> Modifier.border(
                                     3.dp,
                                     CaptureGlow.copy(alpha = pulseAlpha),
@@ -219,12 +271,18 @@ fun CheckersScreen(
                                 else -> Modifier
                             }
 
-                            // Brillo de fondo para capturas obligatorias
                             val glowModifier = if (hasCapture && selectedCell == null) {
                                 Modifier.drawBehind {
                                     drawCircle(
                                         color = CaptureGlow.copy(alpha = pulseAlpha * 0.3f),
                                         radius = this.size.minDimension * pulseScale * 0.7f
+                                    )
+                                }
+                            } else if (isAiCapture && aiPhase == AiPhase.MOVING) {
+                                Modifier.drawBehind {
+                                    drawCircle(
+                                        color = Color(0xFFFF4444).copy(alpha = pulseAlpha * 0.4f),
+                                        radius = this.size.minDimension * pulseScale * 0.8f
                                     )
                                 }
                             } else Modifier
@@ -234,15 +292,17 @@ fun CheckersScreen(
                                     .size(42.dp)
                                     .background(bgColor)
                                     .then(borderModifier)
-                                    .clickable { viewModel.onCellClick(row, col) },
+                                    .clickable(enabled = aiPhase == AiPhase.NONE) { viewModel.onCellClick(row, col) },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Box(modifier = glowModifier) {
+                                    val shouldGlow = (isAiFrom && aiPhase != AiPhase.NONE) ||
+                                            (hasCapture && selectedCell == null)
                                     when (cell) {
                                         CellType.BLACK -> Piece(Color(0xFF00E5FF), false, hasCapture && selectedCell == null, pulseAlpha)
-                                        CellType.WHITE -> Piece(Color(0xFFFF1493), false, false, pulseAlpha)
+                                        CellType.WHITE -> Piece(Color(0xFFFF1493), false, isAiFrom && aiPhase != AiPhase.NONE, pulseAlpha)
                                         CellType.BLACK_KING -> Piece(Color(0xFF00E5FF), true, hasCapture && selectedCell == null, pulseAlpha)
-                                        CellType.WHITE_KING -> Piece(Color(0xFFFF1493), true, false, pulseAlpha)
+                                        CellType.WHITE_KING -> Piece(Color(0xFFFF1493), true, isAiFrom && aiPhase != AiPhase.NONE, pulseAlpha)
                                         else -> {}
                                     }
                                 }
@@ -268,7 +328,7 @@ fun CheckersScreen(
                 ) {
                     Text(text = "Revancha 🔄", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Background)
                 }
-            } else {
+            } else if (aiPhase == AiPhase.NONE) {
                 val statusColor = if (currentPlayer == CellType.BLACK) Green else PinkNeon
                 val statusText = if (currentPlayer == CellType.BLACK) "🟢 Tu turno" else "🔴 Turno de la App"
                 Text(text = statusText, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = statusColor)
@@ -279,7 +339,7 @@ fun CheckersScreen(
 
 @Composable
 fun Piece(color: Color, isKing: Boolean, isGlowing: Boolean, pulseAlpha: Float) {
-    val pieceColor = if (isGlowing) color.copy(alpha = pulseAlpha) else color
+    val pieceColor = if (isGlowing) color.copy(alpha = 0.4f + pulseAlpha * 0.6f) else color
 
     Box(
         modifier = Modifier
@@ -299,7 +359,7 @@ fun Piece(color: Color, isKing: Boolean, isGlowing: Boolean, pulseAlpha: Float) 
                     shadow = Shadow(
                         color = color,
                         offset = Offset(0f, 0f),
-                        blurRadius = 8f
+                        blurRadius = 12f
                     )
                 ) else TextStyle.Default
             )

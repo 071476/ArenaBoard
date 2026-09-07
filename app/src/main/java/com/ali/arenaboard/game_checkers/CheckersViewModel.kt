@@ -14,6 +14,8 @@ enum class CellType { EMPTY, BLACK, WHITE, BLACK_KING, WHITE_KING }
 
 enum class GameRules { AMERICAN, INTERNATIONAL }
 
+enum class AiPhase { THINKING, MOVING, NONE }
+
 class CheckersViewModel : ViewModel() {
 
     var rules by mutableStateOf(GameRules.AMERICAN)
@@ -39,6 +41,17 @@ class CheckersViewModel : ViewModel() {
 
     var scoreApp by mutableIntStateOf(0)
         private set
+
+    // Animación de la IA
+    var aiPhase by mutableStateOf(AiPhase.NONE)
+        private set
+    var aiFromCell by mutableStateOf<Position?>(null)
+        private set
+    var aiToCell by mutableStateOf<Position?>(null)
+        private set
+    var aiCaptureTarget by mutableStateOf<Position?>(null)
+        private set
+    private var pendingAiMove: Move? = null
 
     fun aplicarReglas(newRules: GameRules) {
         rules = newRules
@@ -90,6 +103,7 @@ class CheckersViewModel : ViewModel() {
     fun onCellClick(row: Int, col: Int) {
         if (winner != null) return
         if (currentPlayer != CellType.BLACK) return
+        if (aiPhase != AiPhase.NONE) return
 
         val pos = Position(row, col)
         val cell = board[row][col]
@@ -126,12 +140,10 @@ class CheckersViewModel : ViewModel() {
         if (checkGameEnd()) return
 
         currentPlayer = CellType.WHITE
-        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            aiMove()
-        }, 500)
+        startAiAnimation()
     }
 
-    private fun aiMove() {
+    private fun startAiAnimation() {
         val allMoves = getAllMovesFor(CellType.WHITE)
         if (allMoves.isEmpty()) {
             winner = "¡Ganaste! 🏆"
@@ -146,6 +158,32 @@ class CheckersViewModel : ViewModel() {
             allMoves.random()
         }
 
+        pendingAiMove = move
+
+        // Fase 1: "Pensando" → mostrar la ficha que se va a mover
+        aiPhase = AiPhase.THINKING
+        aiFromCell = move.from
+        aiToCell = null
+        aiCaptureTarget = null
+
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            // Fase 2: "Moviendo" → mostrar destino y ficha a comer
+            aiPhase = AiPhase.MOVING
+            aiToCell = move.to
+            if (move.captures.isNotEmpty()) {
+                aiCaptureTarget = move.captures.first()
+            }
+
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                // Fase 3: Ejecutar el movimiento
+                executeAiMove()
+            }, 700)
+        }, 800)
+    }
+
+    private fun executeAiMove() {
+        val move = pendingAiMove ?: return
+
         val newBoard = board.map { it.toMutableList() }.toMutableList()
         val piece = newBoard[move.from.row][move.from.col]
         newBoard[move.from.row][move.from.col] = CellType.EMPTY
@@ -158,6 +196,13 @@ class CheckersViewModel : ViewModel() {
         newBoard[move.to.row][move.to.col] = finalPiece
 
         board = newBoard
+
+        // Limpiar animación
+        aiPhase = AiPhase.NONE
+        aiFromCell = null
+        aiToCell = null
+        aiCaptureTarget = null
+        pendingAiMove = null
 
         if (checkGameEnd()) return
         currentPlayer = CellType.BLACK
@@ -350,5 +395,10 @@ class CheckersViewModel : ViewModel() {
         validMoves = emptyList()
         currentPlayer = CellType.BLACK
         winner = null
+        aiPhase = AiPhase.NONE
+        aiFromCell = null
+        aiToCell = null
+        aiCaptureTarget = null
+        pendingAiMove = null
     }
 }
