@@ -43,6 +43,9 @@ fun CheckersScreen(
     val blackPieces = board.flatten().count { it == CellType.BLACK || it == CellType.BLACK_KING }
     val whitePieces = board.flatten().count { it == CellType.WHITE || it == CellType.WHITE_KING }
 
+    // Fichas que se pueden mover
+    val movablePieces = viewModel.getMovablePieces()
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -114,7 +117,17 @@ fun CheckersScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Indicador de fichas movibles
+            if (selectedCell == null && winner == null && currentPlayer == CellType.BLACK) {
+                Text(
+                    text = "Toca una ficha con borde brillante ✨",
+                    fontSize = 13.sp,
+                    color = Gold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
 
             Column(
                 modifier = Modifier
@@ -129,6 +142,7 @@ fun CheckersScreen(
                             val isDark = (row + col) % 2 == 1
                             val isSelected = selectedCell?.row == row && selectedCell?.col == col
                             val isValidMove = Position(row, col) in validMoves
+                            val canMove = Position(row, col) in movablePieces
                             val cell = board[row][col]
 
                             val bgColor = when {
@@ -142,7 +156,11 @@ fun CheckersScreen(
                                 modifier = Modifier
                                     .size(42.dp)
                                     .background(bgColor)
-                                    .then(if (isValidMove) Modifier.border(2.dp, Green.copy(alpha = 0.5f)) else Modifier)
+                                    .then(
+                                        if (isValidMove) Modifier.border(2.dp, Green.copy(alpha = 0.5f))
+                                        else if (canMove && selectedCell == null) Modifier.border(2.dp, Gold.copy(alpha = 0.6f))
+                                        else Modifier
+                                    )
                                     .clickable { viewModel.onCellClick(row, col) },
                                 contentAlignment = Alignment.Center
                             ) {

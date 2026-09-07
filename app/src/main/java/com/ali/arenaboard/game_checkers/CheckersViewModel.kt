@@ -45,6 +45,23 @@ class CheckersViewModel : ViewModel() {
         resetGame()
     }
 
+    fun getMovablePieces(): List<Position> {
+        if (currentPlayer != CellType.BLACK || winner != null) return emptyList()
+        val movable = mutableListOf<Position>()
+        for (r in 0..7) {
+            for (c in 0..7) {
+                val cell = board[r][c]
+                if (cell == CellType.BLACK || cell == CellType.BLACK_KING) {
+                    val moves = getMovesFor(Position(r, c))
+                    if (moves.isNotEmpty()) {
+                        movable.add(Position(r, c))
+                    }
+                }
+            }
+        }
+        return movable
+    }
+
     private fun createInitialBoard(): List<List<CellType>> {
         val board = MutableList(8) { MutableList(8) { CellType.EMPTY } }
         for (row in 0..2) {
