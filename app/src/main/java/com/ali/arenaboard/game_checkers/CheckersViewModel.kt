@@ -45,6 +45,17 @@ class CheckersViewModel : ViewModel() {
         resetGame()
     }
 
+    fun hasForcedCaptures(): Boolean {
+        if (currentPlayer != CellType.BLACK || winner != null) return false
+        return getAllCapturesFor(CellType.BLACK).isNotEmpty()
+    }
+
+    fun pieceHasCapture(pos: Position): Boolean {
+        val piece = board[pos.row][pos.col]
+        if (piece != CellType.BLACK && piece != CellType.BLACK_KING) return false
+        return getCapturesFrom(pos).isNotEmpty()
+    }
+
     fun getMovablePieces(): List<Position> {
         if (currentPlayer != CellType.BLACK || winner != null) return emptyList()
         val movable = mutableListOf<Position>()
@@ -52,8 +63,7 @@ class CheckersViewModel : ViewModel() {
             for (c in 0..7) {
                 val cell = board[r][c]
                 if (cell == CellType.BLACK || cell == CellType.BLACK_KING) {
-                    val moves = getMovesFor(Position(r, c))
-                    if (moves.isNotEmpty()) {
+                    if (getMovesFor(Position(r, c)).isNotEmpty()) {
                         movable.add(Position(r, c))
                     }
                 }
@@ -201,7 +211,6 @@ class CheckersViewModel : ViewModel() {
         val piece = board[pos.row][pos.col]
         val directions = getDirections(piece)
         val moves = mutableListOf<Move>()
-
         for (dir in directions) {
             if (isQueen(piece) && rules == GameRules.INTERNATIONAL) {
                 var r = pos.row + dir.first
@@ -230,14 +239,12 @@ class CheckersViewModel : ViewModel() {
         val piece = boardState[pos.row][pos.col]
         val directions = getDirections(piece)
         val captures = mutableListOf<Move>()
-
         for (dir in directions) {
             if (isQueen(piece) && rules == GameRules.INTERNATIONAL) {
                 var r = pos.row + dir.first
                 var c = pos.col + dir.second
                 var foundEnemy = false
                 var enemyPos: Position? = null
-
                 while (r in 0..7 && c in 0..7) {
                     val cell = boardState[r][c]
                     if (!foundEnemy) {
@@ -314,7 +321,6 @@ class CheckersViewModel : ViewModel() {
     private fun getAllMovesFor(player: CellType): List<Move> {
         val allCaptures = getAllCapturesFor(player)
         if (allCaptures.isNotEmpty()) return allCaptures
-
         val pieces = mutableListOf<Position>()
         for (r in 0..7) {
             for (c in 0..7) {

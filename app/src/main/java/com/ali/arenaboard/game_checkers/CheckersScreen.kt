@@ -1,5 +1,6 @@
 package com.ali.arenaboard.game_checkers
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -7,13 +8,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -23,6 +28,7 @@ import com.ali.arenaboard.ui.theme.*
 val DarkSquare = Color(0xFF1A1F3D)
 val LightSquare = Color(0xFF0D1130)
 val HighlightSquare = Color(0xFF00E5FF).copy(alpha = 0.3f)
+val CaptureGlow = Color(0xFFFF1493)
 
 @Composable
 fun CheckersScreen(
@@ -42,9 +48,31 @@ fun CheckersScreen(
 
     val blackPieces = board.flatten().count { it == CellType.BLACK || it == CellType.BLACK_KING }
     val whitePieces = board.flatten().count { it == CellType.WHITE || it == CellType.WHITE_KING }
-
-    // Fichas que se pueden mover
     val movablePieces = viewModel.getMovablePieces()
+
+    // Animación pulsante para fichas que deben comer
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha"
+    )
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
+
+    // ¿Hay captura obligatoria?
+    val mustCapture = viewModel.hasForcedCaptures()
 
     Box(
         modifier = Modifier
@@ -119,16 +147,33 @@ fun CheckersScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Indicador de fichas movibles
-            if (selectedCell == null && winner == null && currentPlayer == CellType.BLACK) {
-                Text(
-                    text = "Toca una ficha con borde brillante ✨",
-                    fontSize = 13.sp,
-                    color = Gold
-                )
+            // Indicador de estado
+            if (winner == null && currentPlayer == CellType.BLACK) {
+                if (mustCapture && selectedCell == null) {
+                    Text(
+                        text = "⚡ ¡DEBES COMER! Toca la ficha que brilla ⚡",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = CaptureGlow
+                    )
+                } else if (selectedCell != null && mustCapture) {
+                    Text(
+                        text = "⚡ Toca la casilla ROJA para comer ⚡",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = CaptureGlow
+                    )
+                } else if (selectedCell == null) {
+                    Text(
+                        text = "Toca una ficha con borde brillante ✨",
+                        fontSize = 13.sp,
+                        color = Gold
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
+            // Tablero
             Column(
                 modifier = Modifier
                     .shadow(16.dp, RoundedCornerShape(12.dp))
@@ -140,36 +185,66 @@ fun CheckersScreen(
                     Row {
                         for (col in 0..7) {
                             val isDark = (row + col) % 2 == 1
-                            val isSelected = selectedCell?.row == row && selectedCell?.col == col
-                            val isValidMove = Position(row, col) in validMoves
-                            val canMove = Position(row, col) in movablePieces
+                            val pos = Position(row, col)
+                            val isSelected = selectedCell == pos
+                            val isValidMove = pos in validMoves
+                            val canMove = pos in movablePieces
                             val cell = board[row][col]
+
+                            // Determinar si esta ficha tiene captura obligatoria
+                            val hasCapture = canMove && mustCapture && viewModel.pieceHasCapture(pos)
 
                             val bgColor = when {
                                 isSelected -> HighlightSquare
+                                isValidMove && mustCapture -> CaptureGlow.copy(alpha = 0.25f)
                                 isValidMove -> Green.copy(alpha = 0.2f)
                                 isDark -> DarkSquare
                                 else -> LightSquare
                             }
 
+                            // Borde de la celda
+                            val borderModifier = when {
+                                isValidMove && mustCapture -> Modifier.border(
+                                    3.dp,
+                                    CaptureGlow.copy(alpha = pulseAlpha),
+                                    RoundedCornerShape(4.dp)
+                                )
+                                isValidMove -> Modifier.border(2.dp, Green.copy(alpha = 0.5f))
+                                hasCapture && selectedCell == null -> Modifier.border(
+                                    3.dp,
+                                    CaptureGlow.copy(alpha = pulseAlpha),
+                                    RoundedCornerShape(4.dp)
+                                )
+                                canMove && selectedCell == null -> Modifier.border(2.dp, Gold.copy(alpha = 0.6f))
+                                else -> Modifier
+                            }
+
+                            // Brillo de fondo para capturas obligatorias
+                            val glowModifier = if (hasCapture && selectedCell == null) {
+                                Modifier.drawBehind {
+                                    drawCircle(
+                                        color = CaptureGlow.copy(alpha = pulseAlpha * 0.3f),
+                                        radius = this.size.minDimension * pulseScale * 0.7f
+                                    )
+                                }
+                            } else Modifier
+
                             Box(
                                 modifier = Modifier
                                     .size(42.dp)
                                     .background(bgColor)
-                                    .then(
-                                        if (isValidMove) Modifier.border(2.dp, Green.copy(alpha = 0.5f))
-                                        else if (canMove && selectedCell == null) Modifier.border(2.dp, Gold.copy(alpha = 0.6f))
-                                        else Modifier
-                                    )
+                                    .then(borderModifier)
                                     .clickable { viewModel.onCellClick(row, col) },
                                 contentAlignment = Alignment.Center
                             ) {
-                                when (cell) {
-                                    CellType.BLACK -> Piece(Color(0xFF00E5FF), false)
-                                    CellType.WHITE -> Piece(Color(0xFFFF1493), false)
-                                    CellType.BLACK_KING -> Piece(Color(0xFF00E5FF), true)
-                                    CellType.WHITE_KING -> Piece(Color(0xFFFF1493), true)
-                                    else -> {}
+                                Box(modifier = glowModifier) {
+                                    when (cell) {
+                                        CellType.BLACK -> Piece(Color(0xFF00E5FF), false, hasCapture && selectedCell == null, pulseAlpha)
+                                        CellType.WHITE -> Piece(Color(0xFFFF1493), false, false, pulseAlpha)
+                                        CellType.BLACK_KING -> Piece(Color(0xFF00E5FF), true, hasCapture && selectedCell == null, pulseAlpha)
+                                        CellType.WHITE_KING -> Piece(Color(0xFFFF1493), true, false, pulseAlpha)
+                                        else -> {}
+                                    }
                                 }
                             }
                         }
@@ -203,17 +278,31 @@ fun CheckersScreen(
 }
 
 @Composable
-fun Piece(color: Color, isKing: Boolean) {
+fun Piece(color: Color, isKing: Boolean, isGlowing: Boolean, pulseAlpha: Float) {
+    val pieceColor = if (isGlowing) color.copy(alpha = pulseAlpha) else color
+
     Box(
         modifier = Modifier
             .size(30.dp)
-            .shadow(4.dp, CircleShape)
+            .shadow(if (isGlowing) 8.dp else 4.dp, CircleShape)
             .clip(CircleShape)
-            .background(color),
+            .background(pieceColor),
         contentAlignment = Alignment.Center
     ) {
         if (isKing) {
-            Text(text = "♛", fontSize = 16.sp, color = Background, fontWeight = FontWeight.Black)
+            Text(
+                text = "♛",
+                fontSize = 16.sp,
+                color = Background,
+                fontWeight = FontWeight.Black,
+                style = if (isGlowing) TextStyle(
+                    shadow = Shadow(
+                        color = color,
+                        offset = Offset(0f, 0f),
+                        blurRadius = 8f
+                    )
+                ) else TextStyle.Default
+            )
         }
     }
 }
